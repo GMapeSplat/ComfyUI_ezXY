@@ -14,79 +14,18 @@
 # ---
 
 # %% jupyter={"outputs_hidden": true}
+import sys
 import execution
 import nodes
 
 # Castable types recognized by ezXY stuff.
 NUMBER_TYPES = ["FLOAT", "INT", "NUMBER"]
 
-# %% [markdown] jupyter={"source_hidden": true}
-# **validate_inputs** returns a touple of (boolean, \[errors\], int_id)
-#
-# **prompt** is dictionary
-#     1:
-#         class_type: node name
-#         inputs:
-#             input name: input value? might be default,
-#             this: that,
-#     2:
-#         class_type: other node
-#         inputs:
-#             myInput: etc...
-#
-# **item** is a string numeral refering to the focused node's id? I think?
-#
-# **validated** is an empty dictionary. It gets filled with validated node ids as this function runs.
-#
-# **inputs** is a dictionary of inputs.  
-#     input name: value,
-#     foo: bar
-#     
-# ---
-#
-# *These items are derived from node defs, rather than the function's arguments*
-# **class_type** is a string used exclusively to return obj_class <class "my node">
-#
-# **class_inputs** is a dictionary of inputs. Unlike the inputs variable before it, this one is basically directely derived from the nodes .py file.
-#     required:
-#         input name: touple (of input type, {and: configuration})
-#     optional:
-#     hidden:
-#
-# **required_inputs** are the only inputs actually verified it seems.
-#     input name: (input type, input configs)
-#
-# **for x in required inputs** x is just the input name. Used to check if the regular inputs variable has a value ready for the node at that input, among other stuff.
-#
-# **info** is a touple derived from python code
-#     (input type, {input: configs})
-#
-# **type_input** is the input type as a string or a list. Lists here are options, usually strings themselves.
-#
-# ---
-#
-# **val** is the value at inputs\[x\]. This is either a list in form \[node_id, slot_index\] representing a link to another node further upstream, or an actual value. If it's a real value, it is almost certainly direct user input (such as a widget).
-#
-# ---
-#
-# *These are used if val is a list*
-#
-# **o_id** the letter 'o' because it looks like a slot i think, is the id of the slot's parent node.
-# **o_class_type** is the class type of the slot's parent
-# **r** I think it stands for 'return', is a touple of the slot's node's return types as strings.
-#     ('INT', 'INT', 'STRING')
-#
-# **r\[val\[1\]\]** is a bit hard to read. It resolves to the incoming value's origin slot's return type as string. These variable names are vulgar.
-#     'INT'
-# r is then pretty much immediately reused to hold the output of a recursive call, validate_inputs(prompt, o_id, validated). That is to say, it attempts to validate the node one spot upstream.
-#
-# ---
-
 # %% jupyter={"outputs_hidden": true}
 # monkey patch validate_inputs
 # This could cause some compatability issues with other custom mods and scripts.
-# Only adds one line of code and a tab to the built-in function.
-# There is probably a cooler way to do this, but I just want it to work.
+# Only adds a couple lines of code and a tab to the built-in function.
+# There is probably a cooler way to do this, but I'm dumb and just want it to work.
 
 _validate_inputs = execution.validate_inputs
 
@@ -147,8 +86,8 @@ def validate_inputs(prompt, item, validated):
             # \/\/\/ Custom Verification Here \/\/\/
             # If either side of a link is expecting a type that isn't handled,
             # do run the function as normal, otherwise skip the type matching verification.
-            if r[val[1]] not in NUMBER_TYPES or type_input not in NUMBER_TYPES:                
-            # /\/\/\ End Custom /\/\/\
+            if r[val[1]] not in NUMBER_TYPES or type_input not in NUMBER_TYPES:
+            # /\/\/\/\/\/\
                 
                 if r[val[1]] != type_input:
                     received_type = r[val[1]]
@@ -246,7 +185,11 @@ def validate_inputs(prompt, item, validated):
                     continue
 
             if hasattr(obj_class, "VALIDATE_INPUTS"):
-                input_data_all = get_input_data(inputs, obj_class, unique_id)
+                
+                # \/\/\/ added execution. to get_input_data \/\/\/
+                input_data_all = execution.get_input_data(inputs, obj_class, unique_id)
+                # /\/\/\ End cutom code /\/\/\
+                
                 #ret = obj_class.VALIDATE_INPUTS(**input_data_all)
                 ret = map_node_over_list(obj_class, input_data_all, "VALIDATE_INPUTS")
                 for i, r in enumerate(ret):
@@ -302,26 +245,14 @@ def validate_inputs(prompt, item, validated):
     validated[unique_id] = ret
     return ret
 
+# Put the edited code back where we found it (kinda)
 execution.validate_inputs = validate_inputs
 print("validate_inputs() from execution.py patched by ezXY.")
 
-# %% [markdown]
-# Might have this figured out now. map_node_over_list is where the real backend function calls happen. I can patch in a wrapper for the functions that might need it at runtime. 
-#
-# Typecast case (all must be true):
-#     - Node slot is recieving a list
-#     - Node slot is expecting a castable type
-#
-# validate_inputs won't pass any mismatched node links. Need to handle the ("FLOAT,INT,NUMBER") output type somehow.
-#
-# These monkey patches should do basically nothing if the input in question isn't expecting a listed castable type.
-#
-#
-
 # %%
-# Monkey patch map_node_over_list
+# Monkey patch map_node_over_list.
 # Modifies node function parameteres right before they are executed.
-# Operations are type casting and range clamping numbers
+# Operations are type casting and range clamping.
 
 _map_node_over_list = execution.map_node_over_list
 
@@ -337,7 +268,7 @@ def map_node_over_list(obj, input_data_all, func, allow_interrupt=False):
     if 'optional' in _info:
         node_inputs.update(_info['optional'])
 
-    # {input_name: (input_type, {default: foo,})}
+    # node_inputs = {input_name: (input_type, {default: foo,})}
     for input_name, config in node_inputs.items():
         # for each input, typecast/clamp the incoming values.
         match config[0]:
@@ -352,9 +283,9 @@ def map_node_over_list(obj, input_data_all, func, allow_interrupt=False):
             case "INT":
                 _nums = [int(value) for value in input_data_all[input_name]]  
                 if 'min' in config[1]:
-                    _nums = [max(nums_, config[1]['min']) for nums_ in _nums]
+                    _nums = [max(min_value, config[1]['min']) for min_value in _nums]
                 if 'max' in config[1]:
-                    _nums = [min(nums_, config[1]['max']) for nums_ in _nums]
+                    _nums = [min(max_value, config[1]['max']) for max_value in _nums]
                 input_data_all[input_name] = _nums
                 
     # Call original function using the sanitized input_data_all.

@@ -8,41 +8,6 @@ const NUMBER_TYPES = ["FLOAT", "INT", "NUMBER"];
 const ext = {
 	name: "Comfy.ezXY",
 	
-	registerCustomNodes() {
-        class ezNote {
-            color=LGraphCanvas.node_colors.yellow.color;
-            bgcolor=LGraphCanvas.node_colors.yellow.bgcolor;
-            groupcolor = LGraphCanvas.node_colors.yellow.groupcolor;
-            constructor() {
-                if (!this.properties) {
-                    this.properties = {};
-                    this.properties.text="";
-                }
-
-                ComfyWidgets.STRING(this, "", ["", {default:this.properties.text, multiline: true}], app)
-
-                this.serialize_widgets = true;
-                this.isVirtualNode = true;
-
-            }
-
-
-        }
-
-        // Load default visibility
-
-        LiteGraph.registerNodeType(
-            "MyNote",
-            Object.assign(ezNote, {
-                title_mode: LiteGraph.NORMAL_TITLE,
-                title: "MyNote",
-                collapsable: true,
-            })
-        );
-
-        ezNote.category = "ezXY";
-    },
-	
 	nodeCreated(node, app) {
 		// Fires every time a node is constructed
 		// You can modify widgets/add handlers/etc here
