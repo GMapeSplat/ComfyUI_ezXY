@@ -50,4 +50,7 @@ git clone https://github.com/GMapeSplat/ComfyUI_ezXY.git
 - [ ] Labeler node
 - [ ] List widget auto-populator? (for model loaders)
 - [ ] Workflow examples
+- [ ] Add mask output to Image plotter
+- [ ] Add comparison operators to math node
+- [ ] Add logic to type-casting patches to allow int/float to string conversions?
   
