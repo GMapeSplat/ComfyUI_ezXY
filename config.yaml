@@ -1,0 +1,8 @@
+---
+# Valid values are "true" and "false" without the quotes.
+# Use automatic type casting?
+auto_typecast: true
+
+# Allow frontend hack (javascript extension) allowing int/float links?
+force_numbertype_compatability: true
+...
