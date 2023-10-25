@@ -33,7 +33,7 @@ def wrapIndex(index, length):
     return index_mod, wraps
 
 
-# %% editable=true slideshow={"slide_type": ""}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
 class PlotImages:
     @classmethod
     def INPUT_TYPES(s):
@@ -409,7 +409,7 @@ class ezXY_Driver:
     RETURN_NAMES = ("x indicies", "y indicies", "iteration",
                     "range",)
     
-    OUTPUT_IS_LIST = (True, True, False, False,)
+    OUTPUT_IS_LIST = (True, True, True, False,)
     
     FUNCTION = "setupXY"
     CATEGORY = "ezXY"
@@ -417,7 +417,7 @@ class ezXY_Driver:
     def setupXY(self, column_count, row_count):
         total_iterations =  column_count * row_count
         # might need to change iterations... output inconsistent with iteration driver
-        iterations = range(1, total_iterations+1)
+        iterations = list(range(1, total_iterations+1))
         
         column_indicies, row_indicies = iterations.copy(), iterations.copy()
         for i, _ in enumerate(iterations):
@@ -455,7 +455,7 @@ class LineToConsole:
         return(1,)
 
 
-# %% editable=true slideshow={"slide_type": ""}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
 NODE_CLASS_MAPPINGS = {
     "PlotImages": PlotImages,
     "IterationDriver": IterationDriver,
