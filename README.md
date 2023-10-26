@@ -18,7 +18,7 @@ git clone https://github.com/GMapeSplat/ComfyUI_ezXY.git
 **Automatic type-casting**
 >Patches Comfy UI during runtime to allow integer and float slots to connect. Data types are cast automatically and clamped to the input slot's configured minimum and maximum values. Should work out of the box with most custom and native nodes. Might cause some compatibility issues, or break depending on your version of ComfyUI.
 >
->Runtime patches do not modify any source files, but it is fairly brute force. Use at your own risk.
+>Runtime patches do not modify any source files, but it is fairly brute force. Use at your own risk. All patches can be deactivated by modifying the values in config.yaml.
 ## Nodes
 
 *ezXY Driver*
@@ -49,7 +49,7 @@ git clone https://github.com/GMapeSplat/ComfyUI_ezXY.git
 ## ToDo
 - [ ] Labeler node
 - [ ] List widget auto-populator? (for model loaders)
-- [ ] Workflow examples
+- [x] Workflow examples
 - [ ] Add mask output to Image plotter
 - [ ] Add comparison operators to math node
 - [ ] Add logic to type-casting patches to allow int/float to string conversions?
