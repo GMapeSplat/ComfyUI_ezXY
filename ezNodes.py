@@ -41,15 +41,15 @@ class PlotImages:
             "required": {
                 "images": ("IMAGE",),
                 "x_pos": ("INT", {
-                    "default": 1, 
-                    "min": 1, #Minimum value
-                    "max": 999, #Maximum value
+                    "default": 0, 
+                    "min": -99, #Minimum value
+                    "max": 99, #Maximum value
                     "step": 1, #Slider's step
                 }),
                 "y_pos": ("INT", {
-                    "default": 1, 
-                    "min": 1,
-                    "max": 999,
+                    "default": 0, 
+                    "min": -99,
+                    "max": 99,
                     "step": 1,
                 }),
             },
@@ -104,9 +104,13 @@ class PlotImages:
             if (_height < max_height or _width < max_width):
                 # .detach() does somthing important I think
                 _image = null_image.detach().clone()
-                # slice top-left corner of blank image (0:_height, 0:_width)
+                # offsets for center (floor)
+                _h_offset = (max_height - _height) // 2
+                _w_offset = (max_width - _width) // 2
+                # slice out center of blank image
                 # then replace it with current image
-                _image[:, :_height, :_width, :] = image
+                # very cool operation, but kinda hard to read, sorry
+                _image[:, _h_offset:_h_offset+_height, _w_offset:_w_offset+_width, :] = image
                 image = _image
                 
             # put each image in it's place
@@ -154,7 +158,7 @@ class IterationDriver:
         return (list(range(0,iterations)), iterations,)
 
 
-# %% jupyter={"source_hidden": true}
+# %%
 class NumbersToList:
     @classmethod
     def INPUT_TYPES(s):
@@ -181,11 +185,10 @@ class NumbersToList:
         valid_chars = "0123456789.;:-+*/%"
         # For each character in numbers, check if it is valid. If yes, put into new string
         numbers = ''.join(char for char in numbers if char in valid_chars)
-
         # remove extra symobols from edges of string
         # string is allowed to start with . or -
-        numbers.strip(";:+*/%")
-        numbers.rstrip(".-")
+        numbers = numbers.strip(";:+*/%")
+        numbers = numbers.rstrip(".-")
 
         # Switch string to list so we can pop duplicates
         numbers = list(numbers)
@@ -213,7 +216,7 @@ class NumbersToList:
                 else:
                     range_step = 1
 
-                chunks[i] = np.arange(range_min, range_max, range_step).tolist()
+                chunks[i] = np.arange(range_min, range_max+1, range_step).tolist()
 
             else:
                 chunks[i] = float(eval(chunk, {}))
@@ -386,7 +389,7 @@ class ezMath:
         return (value,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class ezXY_Driver:
     @classmethod
     def INPUT_TYPES(s):
