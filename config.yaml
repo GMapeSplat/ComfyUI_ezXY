@@ -5,4 +5,9 @@ auto_typecast: true
 
 # Allow frontend hack (javascript extension) allowing int/float links?
 force_numbertype_compatability: true
+
+# Max image size allowed for plot images node in pixels.
+# Mostly just a safety to ensure a misplaced math node doesn't result in billions of pixels.
+# default: 81000000
+max_image_size: 81000000
 ...

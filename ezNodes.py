@@ -13,11 +13,18 @@
 #     name: python3
 # ---
 
-# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
+# %% editable=true slideshow={"slide_type": ""}
 import math
+import os
 import torch
 from pprint import pprint
 import numpy as np
+
+# Bring in config
+import yaml
+config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.yaml")
+with open(config_path, 'r') as file:
+    config = yaml.safe_load(file)
 
 
 # %% jupyter={"source_hidden": true}
@@ -33,7 +40,7 @@ def wrapIndex(index, length):
     return index_mod, wraps
 
 
-# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
+# %% editable=true slideshow={"slide_type": ""}
 class PlotImages:
     @classmethod
     def INPUT_TYPES(s):
@@ -90,6 +97,17 @@ class PlotImages:
             # if largest image checked, update largest dimensions
             max_height = max( max_height, _height )
             max_width = max( max_width, _width )
+
+        # Check if final plot will be too large (in pixels).
+        # Change value in config.yaml for larger images
+        pixels = max_height * len(plot) * max_width * len(plot[0])
+        if pixels > config['max_image_size']:
+            message = "ezXY: Plotted image too large\n"
+            message = message + f"    Max pixels: {config['max_image_size']:,}\n"
+            message = message + f"    Plot size : {pixels:,}\n"
+            message = message + "    Returning single image."
+            print(message)
+            return([images[0]])
 
         # blank image tensor
         null_image = torch.zeros(dim0, max_height, max_width, dim3)
@@ -158,7 +176,7 @@ class IterationDriver:
         return (list(range(0,iterations)), iterations,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class NumbersToList:
     @classmethod
     def INPUT_TYPES(s):
