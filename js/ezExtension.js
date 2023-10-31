@@ -3,6 +3,9 @@ import { ComfyWidgets } from "../../scripts/widgets.js";
 
 
 const NUMBER_TYPES = ["FLOAT", "INT", "NUMBER"];
+// This should equal something like "FLOAT,INT,NUMBER,STRING".
+// That string can be used on the frontend slot types to allow an input or output to connect to multiple different types.
+const VALID_OUTPUT_TYPES = [...NUMBER_TYPES, "STRING"].join(",");
 
 
 const ext = {
@@ -28,7 +31,10 @@ const ext = {
 	async beforeRegisterNodeDef(_, nodeData, app) {
 		const outputs = nodeData.output;
 		
-		outputs.forEach( (output_type, index) => NUMBER_TYPES.includes(output_type) && (outputs[index] = NUMBER_TYPES.join(",")) );
+		// I wrote this code, but I can't seem to remember how to read it.
+		// I think it says "If a nodes output type is one of the types defined in 'NUMBER_TYPES', then do change the output type to NUMBER_TYPES.join(',')"
+		// The && is just shorthand... probably.
+		outputs.forEach( (output_type, index) => NUMBER_TYPES.includes(output_type) && (outputs[index] = VALID_OUTPUT_TYPES ));
 	},
 }
 

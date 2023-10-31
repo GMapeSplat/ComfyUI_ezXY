@@ -86,7 +86,7 @@ def validate_inputs(prompt, item, validated):
             # \/\/\/ Custom Verification Here \/\/\/
             # If either side of a link is expecting a type that isn't handled,
             # do run the function as normal, otherwise skip the type matching verification.
-            if r[val[1]] not in NUMBER_TYPES or type_input not in NUMBER_TYPES:
+            if r[val[1]] not in NUMBER_TYPES or type_input not in [*NUMBER_TYPES, "STRING"]:
             # /\/\/\/\/\/\
                 
                 if r[val[1]] != type_input:
@@ -286,6 +286,10 @@ def map_node_over_list(obj, input_data_all, func, allow_interrupt=False):
                     _nums = [max(min_value, config[1]['min']) for min_value in _nums]
                 if 'max' in config[1]:
                     _nums = [min(max_value, config[1]['max']) for max_value in _nums]
+                input_data_all[input_name] = _nums
+
+            case "STRING":
+                _nums = [str(value) for value in input_data_all[input_name]]
                 input_data_all[input_name] = _nums
                 
     # Call original function using the sanitized input_data_all.
