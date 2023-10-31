@@ -13,18 +13,22 @@
 #     name: python3
 # ---
 
-# %% editable=true slideshow={"slide_type": ""}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"outputs_hidden": true}
 import math
 import os
 import torch
 from pprint import pprint
+from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
+EZXY_PATH = os.path.dirname(os.path.realpath(__file__))
+CONFIG_PATH = os.path.join(EZXY_PATH, "config.yaml")
+FONT_PATH = os.path.join(EZXY_PATH, "font/FiraCode-Regular.otf")
 # Bring in config
 import yaml
-config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.yaml")
-with open(config_path, 'r') as file:
-    config = yaml.safe_load(file)
+#config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.yaml")
+with open(CONFIG_PATH, 'r') as file:
+    CONFIG = yaml.safe_load(file)
 
 
 # %% jupyter={"source_hidden": true}
@@ -38,6 +42,20 @@ def wrapIndex(index, length):
     index_mod = int(math.fmod(index, length))
     wraps = index//length
     return index_mod, wraps
+
+
+# %%
+def padImage(image, target_dimensions):
+    dim0, dim1, dim2, dim3 = image.size()
+    null_image = torch.zeros(dim0, target_dimensions[0], target_dimensions[1], dim3)
+
+    height_offset = (target_dimensions[0] - dim1) // 2
+    width_offset = (target_dimensions[1] - dim2) // 2
+    
+    null_image[:, height_offset:height_offset+dim1, width_offset:width_offset+dim2, :] = image
+    image = null_image
+
+    return image
 
 
 # %% editable=true slideshow={"slide_type": ""}
@@ -77,7 +95,7 @@ class PlotImages:
         row_min, row_max = min(y_pos), max(y_pos)
         
         # size of the grid
-        # grid might have more positions than input data
+        # grid might have at least as many positions as input data
         column_range = range(column_min, column_max+1)
         row_range = range(row_min, row_max+1)
 
@@ -94,16 +112,16 @@ class PlotImages:
             # check and store image size dimensions
             _, _height, _width, _ = image.size()
             image_dims.append([_height, _width])
-            # if largest image checked, update largest dimensions
+            # if this is the largest image checked, update largest dimensions
             max_height = max( max_height, _height )
             max_width = max( max_width, _width )
 
         # Check if final plot will be too large (in pixels).
-        # Change value in config.yaml for larger images
+        # Change value in config.yaml if you want larger images
         pixels = max_height * len(plot) * max_width * len(plot[0])
-        if pixels > config['max_image_size']:
+        if pixels > CONFIG['max_image_size']:
             message = "ezXY: Plotted image too large\n"
-            message = message + f"    Max pixels: {config['max_image_size']:,}\n"
+            message = message + f"    Max pixels: {CONFIG['max_image_size']:,}\n"
             message = message + f"    Plot size : {pixels:,}\n"
             message = message + "    Returning single image."
             print(message)
@@ -120,19 +138,11 @@ class PlotImages:
             # if image is smaller than largest image, pad it
             _height, _width = image_dims[i]
             if (_height < max_height or _width < max_width):
-                # .detach() does somthing important I think
-                _image = null_image.detach().clone()
-                # offsets for center (floor)
-                _h_offset = (max_height - _height) // 2
-                _w_offset = (max_width - _width) // 2
-                # slice out center of blank image
-                # then replace it with current image
-                # very cool operation, but kinda hard to read, sorry
-                _image[:, _h_offset:_h_offset+_height, _w_offset:_w_offset+_width, :] = image
-                image = _image
+                image = padImage(image, (max_height, max_width))
                 
             # put each image in it's place
             # index 'i' is synchronised between position and image lists
+            # so everything just kinda works out.
             plot[y][x] = image
             
         # I don't know a whole lot about tensors, but this works.
@@ -147,6 +157,63 @@ class PlotImages:
         # Finally, concatonate the rows together to form the finished plot
         plot = torch.cat(plot, 1)
         return (plot,)
+
+
+# %% jupyter={"source_hidden": true}
+class JoinImages:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image_1": ("IMAGE",),
+                "image_2": ("IMAGE",),
+                "direction": (["Vertical", "Horizontal"],),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("Image",)
+    
+    FUNCTION = "join_images"
+    
+    CATEGORY = "ezXY"
+
+    def join_images(self, image_1, image_2, direction):
+        images = [image_1, image_2]
+
+        # Set up indicies for comparisons and concatenation
+        if direction == "Vertical":
+            cat_dimension, joint_dimension = 1,2
+        elif direction == "Horizontal":
+            cat_dimension, joint_dimension = 2,1
+
+        # Compare images to see if one needs to be padded
+        # torch.cat requires that all but the target dimension have the same size
+        # So we pad horizontally if we concatenate vertically.
+        pad_this = -1
+        if images[0].size()[joint_dimension] > images[1].size()[joint_dimension]:
+            pad_this = 1
+        elif images[0].size()[joint_dimension] < images[1].size()[joint_dimension]:
+            pad_this = 0
+
+        # If one of the images needs to be padded, do pad it.
+        if pad_this != -1:
+            # Sweet pop/insert pattern. Probably a sin.
+            _image = images.pop(pad_this)
+            
+            pad_dims = None
+            # Only pad an image on the joint axis
+            if direction == "Vertical":
+                pad_dims = (_image.size()[1], images[0].size()[2])
+            elif direction == "Horizontal":
+                pad_dims = (images[0].size()[1], _image.size()[2])
+
+            _image = padImage(_image, pad_dims)
+            # Put modified image back where we found it.
+            images.insert(pad_this, _image)
+            
+        output = torch.cat(images, cat_dimension)
+        return (output,)
 
 
 # %% jupyter={"source_hidden": true}
@@ -311,21 +378,81 @@ class ItemFromList:
 
     
     def pick(self, input, index):
-        # Since INPUT_IS_LIST, arguments arn't pulled out of their list went sent to us
+        # Since INPUT_IS_LIST, arguments arn't pulled out of their list when sent to us
         index = index[0]
         length = len(input)
 
-        # Using modulo ensures the index won't go out of range, wrapping back to 0 instead
-        # math.fmod returns more predictable results when index is negative
-        #index_mod = int(math.fmod(index, length))
-        
-        #list_item = input[index_mod]
-        #iteration = math.floor(index / length)
         index_mod, wraps = wrapIndex(index, length)
+        list_item = input[index_mod]
         return (list_item, length, wraps,)
 
 
 # %% jupyter={"source_hidden": true}
+class StringToLabel:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input": ("STRING", {}),
+                "font_size": ("INT", {"default": 45, "min": 1, "max": 200, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("Label",)
+
+    FUNCTION = "createLabel"
+    
+    CATEGORY = "ezXY"
+
+    def createLabel(self, input, font_size):
+        font = ImageFont.truetype(FONT_PATH, font_size)
+        
+        # Fake image for size testing
+        _image = Image.new("RGB", (1,1))
+        _draw = ImageDraw.Draw(_image)
+        _, _, length, height = _draw.textbbox((0,0), input, font)
+
+        # Create the real image and its drawing obj
+        label_image = Image.new("RGB", [length, int(height*1.1)])
+        draw_obj = ImageDraw.Draw(label_image)
+
+        # Draw the text. All the strange parameters are for centering the text.
+        draw_obj.text((0,height//1.75), input, font=font, anchor='lm')
+
+        # Converting to something that Comfy can understand.
+        label_array = np.array(label_image, ndmin=4)
+        label_array = torch.from_numpy(label_array)
+
+        return (label_array,)
+
+
+# %%
+class ConcatenateString:
+    @classmethod
+    def INPUT_TYPES(s):
+        return{
+            "required": {
+                "string_1": ("STRING", {"multiline": True,}),
+                "separator": ("STRING", {}),
+                "string_2": ("STRING", {"multiline": True,}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("Joined String",)
+
+    FUNCTION = "concatenate_string"
+    
+    CATEGORY = "ezXY"
+
+    def concatenate_string(self, string_1, separator, string_2):
+        # To avoid accidentally adding numbers .join is used
+        output = "".join([string_1, separator, string_2])
+        return (output,)
+
+
+# %%
 class ezMath:
     @classmethod
     def INPUT_TYPES(s):
@@ -476,13 +603,16 @@ class LineToConsole:
         return(1,)
 
 
-# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"outputs_hidden": true}
 NODE_CLASS_MAPPINGS = {
     "PlotImages": PlotImages,
+    "JoinImages": JoinImages,
     "IterationDriver": IterationDriver,
     "StringToList": StringToList,
     "NumbersToList": NumbersToList,
     "ItemFromList": ItemFromList,
+    "StringToLabel": StringToLabel,
+    "ConcatenateString": ConcatenateString,
     "ezMath": ezMath,
     "ezXY_Driver": ezXY_Driver,
     "LineToConsole": LineToConsole,
@@ -490,13 +620,14 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PlotImages": "Plot Images",
+    "JoinImages": "Join Images",
     "IterationDriver": "Iteration Driver",
     "StringToList": "String to List",
     "NumbersToList": "Numbers to List",
     "ItemFromList": "Item from List",
+    "StringToLabel": "String to Label",
+    "ConcatenateString": "Concatenate String",
     "ezMath": "ezMath",
     "ezXY_Driver": "ezXY Driver",
     "LineToConsole": "Line to Console",
 }
-
-# %% jupyter={"source_hidden": true}
