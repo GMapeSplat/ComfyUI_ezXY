@@ -1,3 +1,4 @@
 pprint
 numpy
 torch
+cv2

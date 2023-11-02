@@ -17,6 +17,7 @@
 import math
 import os
 import torch
+import cv2
 from pprint import pprint
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
@@ -44,21 +45,112 @@ def wrapIndex(index, length):
     return index_mod, wraps
 
 
-# %%
+# %% jupyter={"source_hidden": true}
+def forceCatImages(images, coordinates, force_all = False):
+    x, y = coordinates
+    # find the edges of grid
+    column_min, column_max = min(x), max(x)
+    row_min, row_max = min(y), max(y)
+    
+    # size of the grid
+    # grid might have more positions than it has input data
+    column_range = range(column_min, column_max+1)
+    row_range = range(row_min, row_max+1)
+
+    # Check which dimensions need to be padded before concatenation
+    pad_dimensions = [0,0]
+    if force_all:
+        pad_dimensions = [1,1]
+    else: 
+        if len(column_range) > 1:
+            pad_dimensions[0] += 1 
+        if len(row_range) > 1:
+            pad_dimensions[1] += 1
+
+    # create the grid (2d list) of size row_range x column_range items
+    # rows go first because that is the format Comy uses
+    # values don't matter, they are only placeholders
+    # rows(y) at dimension 0; columns(x) take up dimension 1
+    plot = list(row_range)
+    for i,_ in enumerate(plot):
+        plot[i] = list(column_range)
+
+    # Capture all image sizes and find the largest values
+    max_height = max_width = 0
+    image_sizes = []
+    for image in images:
+        _, _height, _width, _ = image.shape
+        max_height = max(max_height, _height)
+        max_width = max(max_width, _width)
+        image_sizes.append({"height": _height, "width": _width})
+
+    # Check if final plot will be too large (in pixels).
+    # Change value in config.yaml if you want larger images
+    pixels = max_height * len(plot) * max_width * len(plot[0])
+    if pixels > CONFIG['max_image_size']:
+        message = "ezXY: Plotted image too large\n"
+        message = message + f"    Max pixels: {CONFIG['max_image_size']:,}\n"
+        message = message + f"    Plot size(approx.) : {pixels:,}\n"
+        message = message + "    Returning single image."
+        print(message)
+        return([images[0]])
+
+    # Zero out max height or width if only padding along a single dimension.
+    required_height, required_width = np.multiply([max_height,max_width], pad_dimensions)
+
+    for i, dims in enumerate(image_sizes):
+        # Pad undersized images
+        if required_height > dims["height"] or required_width > dims["width"]:
+            images[i] = padImage(images[i], (required_height, required_width))
+
+        # remap position lists to the new grid's coordinates
+        # desired variables look like (0,0) to (column_max, row_max)
+        _x, _y = x[i] - column_min, y[i] - row_min
+        
+        # put each image in it's place
+        # index 'i' is synchronised between position, image, and dim lists
+        # so everything just kinda works out.
+        plot[_y][_x] = images[i]
+
+
+    # I don't know a whole lot about tensors, but this works.
+    # Start by iterating through the plot's rows, filling empty positions with blank images
+    # Then concatonate the images horizontally, forming rows
+    null_image = torch.zeros(1, max_height, max_width, 3)
+    for i, row in enumerate(plot):
+        for j, item in enumerate(row):
+            if type(item) != torch.Tensor:
+                row[j] = null_image
+        plot[i] = torch.cat(row, 2)
+
+    # Finally, concatonate the rows together to form the finished plot
+    plot = torch.cat(plot, 1)
+    return plot
+
+
+# %% jupyter={"source_hidden": true}
 def padImage(image, target_dimensions):
     dim0, dim1, dim2, dim3 = image.size()
-    null_image = torch.zeros(dim0, target_dimensions[0], target_dimensions[1], dim3)
+    _height = max(dim1, target_dimensions[0])
+    _width = max(dim2, target_dimensions[1])
 
-    height_offset = (target_dimensions[0] - dim1) // 2
-    width_offset = (target_dimensions[1] - dim2) // 2
+    # Blank image of the minimum size
+    _image = torch.zeros(dim0, _height, _width, dim3)
+
+    top_pad = (_height - dim1) // 2
+    bottom_pad = top_pad + dim1
     
-    null_image[:, height_offset:height_offset+dim1, width_offset:width_offset+dim2, :] = image
-    image = null_image
+    left_pad = (_width - dim2) // 2
+    right_pad = left_pad + dim2
+    
+    # Very cool image splicing pattern
+    # Replaces the center of the blank image with the image from params
+    _image[:, top_pad:bottom_pad, left_pad:right_pad, :] = image
+    
+    return _image
 
-    return image
 
-
-# %% editable=true slideshow={"slide_type": ""}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
 class PlotImages:
     @classmethod
     def INPUT_TYPES(s):
@@ -89,78 +181,84 @@ class PlotImages:
     
     CATEGORY = "ezXY"
     
-    def plotXY(self, images, x_pos, y_pos):
+    def plotXY(self, images, x_pos, y_pos, force_all = False):
         # find the edges of grid
         column_min, column_max = min(x_pos), max(x_pos)
         row_min, row_max = min(y_pos), max(y_pos)
         
         # size of the grid
-        # grid might have at least as many positions as input data
-        column_range = range(column_min, column_max+1)
-        row_range = range(row_min, row_max+1)
-
+        # grid might have more positions than it has input data
+        column_length = len(range(column_min, column_max+1))
+        row_length = len(range(row_min, row_max+1))
+    
+        # Check which dimensions need to be padded before concatenation
+        pad_dimensions = [0,0]
+        if force_all:
+            pad_dimensions = [1,1]
+        else: 
+            if column_length > 1:
+                pad_dimensions[0] += 1 
+            if row_length > 1:
+                pad_dimensions[1] += 1
+    
         # create the grid (2d list) of size row_range x column_range items
-        # rows(y) at dimension 0, columns(x) take up dimension 1
-        plot = list(row_range)
-        for row,_ in enumerate(plot):
-            plot[row] = list(column_range)
-
-        # prepare variables for image size normalization
-        dim0, max_height, max_width, dim3 = images[0].size()
-        image_dims = list()
+        # Pretty sweet pattern
+        plot = [ [None] * column_length for i in range(row_length) ]
+    
+        # Capture all image sizes and find the largest values
+        max_height = max_width = 0
+        image_sizes = []
         for image in images:
-            # check and store image size dimensions
-            _, _height, _width, _ = image.size()
-            image_dims.append([_height, _width])
-            # if this is the largest image checked, update largest dimensions
-            max_height = max( max_height, _height )
-            max_width = max( max_width, _width )
-
+            _, _height, _width, _ = image.shape
+            max_height = max(max_height, _height)
+            max_width = max(max_width, _width)
+            image_sizes.append({"height": _height, "width": _width})
+    
         # Check if final plot will be too large (in pixels).
         # Change value in config.yaml if you want larger images
         pixels = max_height * len(plot) * max_width * len(plot[0])
         if pixels > CONFIG['max_image_size']:
             message = "ezXY: Plotted image too large\n"
             message = message + f"    Max pixels: {CONFIG['max_image_size']:,}\n"
-            message = message + f"    Plot size : {pixels:,}\n"
+            message = message + f"    Plot size(approx.) : {pixels:,}\n"
             message = message + "    Returning single image."
             print(message)
             return([images[0]])
-
-        # blank image tensor
-        null_image = torch.zeros(dim0, max_height, max_width, dim3)
-
-        for i, image in enumerate(images):
+    
+        # Zero out max height or width if only padding along a single dimension.
+        required_height, required_width = np.multiply([max_height,max_width], pad_dimensions)
+    
+        for i, dims in enumerate(image_sizes):
+            # Pad undersized images
+            if required_height > dims["height"] or required_width > dims["width"]:
+                images[i] = padImage(images[i], (required_height, required_width))
+    
             # remap position lists to the new grid's coordinates
-            # (0,0) to (column_max, row_max)
-            x, y = x_pos[i] - column_min, y_pos[i] - row_min
-
-            # if image is smaller than largest image, pad it
-            _height, _width = image_dims[i]
-            if (_height < max_height or _width < max_width):
-                image = padImage(image, (max_height, max_width))
-                
-            # put each image in it's place
-            # index 'i' is synchronised between position and image lists
-            # so everything just kinda works out.
-            plot[y][x] = image
+            # desired variables look like (0,0) to (column_max, row_max)
+            _x, _y = x_pos[i] - column_min, y_pos[i] - row_min
             
+            # put each image in it's place
+            # index 'i' is synchronised between position, image, and dim lists
+            # so everything just kinda works out.
+            plot[_y][_x] = images[i]
+    
         # I don't know a whole lot about tensors, but this works.
         # Start by iterating through the plot's rows, filling empty positions with blank images
         # Then concatonate the images horizontally, forming rows
-        for index, row in enumerate(plot):
-            for jndex, item in enumerate(row):
-                if type(item) != torch.Tensor:
-                    row[jndex] = null_image
-            plot[index] = torch.cat(row, 2)
-
+        null_image = torch.zeros(1, max_height, max_width, 3)
+        for i, row in enumerate(plot):
+            for j, item in enumerate(row):
+                if not torch.is_tensor(item):
+                    row[j] = null_image
+            plot[i] = torch.cat(row, 2)
+    
         # Finally, concatonate the rows together to form the finished plot
         plot = torch.cat(plot, 1)
         return (plot,)
 
 
 # %% jupyter={"source_hidden": true}
-class JoinImages:
+class JoinImages():
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -180,40 +278,18 @@ class JoinImages:
 
     def join_images(self, image_1, image_2, direction):
         images = [image_1, image_2]
-
-        # Set up indicies for comparisons and concatenation
+        
+        x = y = None
         if direction == "Vertical":
-            cat_dimension, joint_dimension = 1,2
+            x = (0, 0)
+            y = (0, 1)
         elif direction == "Horizontal":
-            cat_dimension, joint_dimension = 2,1
+            x = (0, 1)
+            y = (0, 0)
 
-        # Compare images to see if one needs to be padded
-        # torch.cat requires that all but the target dimension have the same size
-        # So we pad horizontally if we concatenate vertically.
-        pad_this = -1
-        if images[0].size()[joint_dimension] > images[1].size()[joint_dimension]:
-            pad_this = 1
-        elif images[0].size()[joint_dimension] < images[1].size()[joint_dimension]:
-            pad_this = 0
+        plotter = PlotImages()
 
-        # If one of the images needs to be padded, do pad it.
-        if pad_this != -1:
-            # Sweet pop/insert pattern. Probably a sin.
-            _image = images.pop(pad_this)
-            
-            pad_dims = None
-            # Only pad an image on the joint axis
-            if direction == "Vertical":
-                pad_dims = (_image.size()[1], images[0].size()[2])
-            elif direction == "Horizontal":
-                pad_dims = (images[0].size()[1], _image.size()[2])
-
-            _image = padImage(_image, pad_dims)
-            # Put modified image back where we found it.
-            images.insert(pad_this, _image)
-            
-        output = torch.cat(images, cat_dimension)
-        return (output,)
+        return plotter.plotXY(images, x, y, False)
 
 
 # %% jupyter={"source_hidden": true}
@@ -357,34 +433,69 @@ class StringToList:
 
 
 # %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
-class ItemFromList:
+class NumberFromList:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "input": ("",),
+                "list_input": ("FLOAT", {}),
                 "index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
             },
         }
 
-    RETURN_TYPES = ("", "INT", "INT",)
+    RETURN_TYPES = ("FLOAT", "INT", "INT",)
     RETURN_NAMES = ("list item", "size", "wraps",)
 
     INPUT_IS_LIST = True
+    OUTPUT_IS_LIST = (True, False, True)
 
     FUNCTION = "pick"
 
     CATEGORY = "ezXY"
-
     
-    def pick(self, input, index):
-        # Since INPUT_IS_LIST, arguments arn't pulled out of their list when sent to us
-        index = index[0]
-        length = len(input)
+    def pick(self, list_input, index):
+        length = len(list_input)
 
-        index_mod, wraps = wrapIndex(index, length)
-        list_item = input[index_mod]
-        return (list_item, length, wraps,)
+        wraps_list, item_list = [],[]
+        for i in index:
+            index_mod, wraps = wrapIndex(i, length)
+            wraps_list.append(wraps)
+            item_list.append(list_input[index_mod])
+            
+        return (item_list, length, wraps_list,)
+
+
+# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
+class StringFromList:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "list_input": ("STRING", {}),
+                "index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "INT", "INT",)
+    RETURN_NAMES = ("list item", "size", "wraps",)
+
+    INPUT_IS_LIST = True
+    OUTPUT_IS_LIST = (True, False, True)
+
+    FUNCTION = "pick"
+
+    CATEGORY = "ezXY"
+    
+    def pick(self, list_input, index):
+        length = len(list_input)
+
+        wraps_list, item_list = [],[]
+        for i in index:
+            index_mod, wraps = wrapIndex(i, length)
+            wraps_list.append(wraps)
+            item_list.append(list_input[index_mod])
+            
+        return (item_list, length, wraps_list,)
 
 
 # %% jupyter={"source_hidden": true}
@@ -427,7 +538,7 @@ class StringToLabel:
         return (label_array,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class ConcatenateString:
     @classmethod
     def INPUT_TYPES(s):
@@ -452,7 +563,7 @@ class ConcatenateString:
         return (output,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class ezMath:
     @classmethod
     def INPUT_TYPES(s):
@@ -574,6 +685,93 @@ class ezXY_Driver:
         return (column_indicies, row_indicies, iterations, total_iterations)
 
 
+# %% jupyter={"source_hidden": true}
+class ezXY_AssemblePlot:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+                "x_labels": ("IMAGE",),
+                "y_labels": ("IMAGE",),
+            },
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("Plot",)
+    
+    INPUT_IS_LIST = True
+    
+    FUNCTION = "assemble_plot"
+    CATEGORY = "ezXY"
+
+    def assemble_plot(self, images, x_labels, y_labels):
+        image_count = len(images)
+        row_length = len(x_labels)
+        column_length = len(y_labels)
+
+        # Throw an error message if you have too many/few images
+        if image_count != (row_length * column_length):
+            print("Labels/Images don't add up!")
+            return images
+
+        # Figure grid coordinates for images
+        x, y, = [], []
+        for i in range(image_count):
+            _y, _x = divmod(i, row_length)
+            x.append(_x), y.append(_y)
+        
+        plotter = PlotImages()
+        _plot = plotter.plotXY(images, x, y, True)[0]
+        
+        _, plot_height, plot_width, _ = _plot.shape
+        # Calculate the maximum length for the labels
+        max_x_label_length = max( plot_width // row_length, x_labels[0].shape[2] )
+        max_y_label_length = max( plot_height // column_length, y_labels[0].shape[2] )
+
+        # Pad first labels to their maximum size.
+        # Once joined, this will ensure all labels are at least of length max_length
+        x_labels[0] = padImage(x_labels[0], [x_labels[0].shape[1], max_x_label_length])
+        y_labels[0] = padImage(y_labels[0], [y_labels[0].shape[1], max_y_label_length])
+
+        # Set up positions for labels
+        # Only Horizontal for now
+        x_label_positions = [ list(range(row_length)), [0]*row_length ]
+        y_label_positions = [ list(range(column_length)), [0]*column_length ]
+
+        _x = plotter.plotXY(x_labels, x_label_positions[0], x_label_positions[1], True)[0]
+        y_labels.reverse()
+        _y = plotter.plotXY(y_labels, y_label_positions[0], y_label_positions[1], True)[0]
+        _y = torch.rot90(_y, 1, [1,2])
+
+        # Check lengths of joined labels
+        _, x_height, x_width, _ = _x.shape
+        _, y_height, y_width, _ = _y.shape
+
+        # If our labels end up oversized, scale them back.
+        # A lot of conversions. Kinda sucks but I don't know what to do about it.
+        if x_width > plot_width:
+            _x = _x.numpy()
+            _x = cv2.resize(_x[0], [plot_width, x_height])
+            _x = np.array(_x, ndmin=4 )
+            _x = torch.from_numpy(_x)
+        if y_height > plot_height:
+            _y = _y.numpy()
+            _y = cv2.resize(_y[0], [y_width, plot_height])
+            _y = np.array(_y, ndmin=4 )
+            _y = torch.from_numpy(_y)
+
+        # Slap on the x labels
+        _plot = torch.cat([_x, _plot], 1)
+        # The Y labels need a blank corner
+        corner = torch.zeros(1,x_height, y_width,3)
+        _y = torch.cat([corner,_y], 1)
+        # Finish the job
+        plot = torch.cat([_y, _plot], 2)
+
+        return (plot,)
+
+
 # %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
 class LineToConsole:
     @classmethod
@@ -610,11 +808,13 @@ NODE_CLASS_MAPPINGS = {
     "IterationDriver": IterationDriver,
     "StringToList": StringToList,
     "NumbersToList": NumbersToList,
-    "ItemFromList": ItemFromList,
+    "StringFromList": StringFromList,
+    "NumberFromList": NumberFromList,
     "StringToLabel": StringToLabel,
     "ConcatenateString": ConcatenateString,
     "ezMath": ezMath,
     "ezXY_Driver": ezXY_Driver,
+    "ezXY_AssemblePlot": ezXY_AssemblePlot,
     "LineToConsole": LineToConsole,
 }
 
@@ -624,10 +824,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "IterationDriver": "Iteration Driver",
     "StringToList": "String to List",
     "NumbersToList": "Numbers to List",
-    "ItemFromList": "Item from List",
+    "StringFromList": "String from List",
+    "NumberFromList": "Number from List",
     "StringToLabel": "String to Label",
     "ConcatenateString": "Concatenate String",
     "ezMath": "ezMath",
     "ezXY_Driver": "ezXY Driver",
+    "ezXY_AssemblePlot": "ezXY Assemble Plot",
     "LineToConsole": "Line to Console",
 }
