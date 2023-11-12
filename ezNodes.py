@@ -46,6 +46,7 @@ def wrapIndex(index, length):
 
 
 # %% jupyter={"source_hidden": true}
+"""
 def forceCatImages(images, coordinates, force_all = False):
     x, y = coordinates
     # find the edges of grid
@@ -126,6 +127,7 @@ def forceCatImages(images, coordinates, force_all = False):
     # Finally, concatonate the rows together to form the finished plot
     plot = torch.cat(plot, 1)
     return plot
+    """
 
 
 # %% jupyter={"source_hidden": true}
@@ -179,7 +181,7 @@ class PlotImages:
     
     FUNCTION = "plotXY"
     
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/image"
     
     def plotXY(self, images, x_pos, y_pos, force_all = False):
         # find the edges of grid
@@ -274,7 +276,7 @@ class JoinImages():
     
     FUNCTION = "join_images"
     
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/image"
 
     def join_images(self, image_1, image_2, direction):
         images = [image_1, image_2]
@@ -313,7 +315,7 @@ class IterationDriver:
 
     FUNCTION = "iterate"
 
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/list generation"
     
     def iterate(self, iterations):
         return (list(range(0,iterations)), iterations,)
@@ -327,21 +329,20 @@ class NumbersToList:
             "required": {
                 "numbers": ("STRING", {
                     "multiline": True,
-                    "default": "Semicolon separated list, e.g. 2;4;7.2\nRanges defined by start:stop:step, e.g. 0:10:1 or 0:10"}),
-                "pick_index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
+                    "placeholder": "Semicolon separated list, e.g. 2;4;7.2\nRanges defined by start:stop:step, e.g. 0:10:1 or 0:10"}),
             },
         }
 
-    RETURN_TYPES = ("FLOAT", "FLOAT", "INT", "INT",)
-    RETURN_NAMES = ("list", "picked number", "size", "wraps",)
+    RETURN_TYPES = ("FLOAT", "INT",)
+    RETURN_NAMES = ("list", "size",)
 
-    OUTPUT_IS_LIST = (True, False, False, False)
+    OUTPUT_IS_LIST = (True, False,)
 
-    FUNCTION = "pack"
+    FUNCTION = "numbersToList"
 
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/list generation"
     
-    def pack(self, numbers, pick_index):
+    def numbersToList(self, numbers):
         # Start by sanitizing input
         valid_chars = "0123456789.;:-+*/%"
         # For each character in numbers, check if it is valid. If yes, put into new string
@@ -392,34 +393,32 @@ class NumbersToList:
                 output_list.append(chunk)
             
         length = len(output_list)
-        index_mod, wraps = wrapIndex(pick_index, length)
         
-        return (output_list, output_list[index_mod], length, wraps)
+        return (output_list, length,)
 
 
 # %% jupyter={"source_hidden": true}
-class StringToList:
+class StringsToList:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "string": ("STRING", {
                     "multiline": True,
-                    "default": "Semicolon separated list, e.g. this;that;these"}),
-                "pick_index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
+                    "placeholder": "Semicolon separated list, e.g. this;that;these"}),
             },
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "INT", "INT")
-    RETURN_NAMES = ("list", "picked string", "size", "wraps")
+    RETURN_TYPES = ("STRING", "INT",)
+    RETURN_NAMES = ("list", "size",)
 
-    OUTPUT_IS_LIST = (True, False, False, False)
+    OUTPUT_IS_LIST = (True, False,)
 
     FUNCTION = "pack"
 
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/list generation"
 
-    def pack(self, string, pick_index):
+    def pack(self, string,):
         # sanitize input
         if string.endswith(";"):
             string = string.rstrip(";")
@@ -427,12 +426,10 @@ class StringToList:
         string_as_list = string.split(";")
         length = len(string_as_list)
 
-        index_mod, wraps = wrapIndex(pick_index, length)
-        
-        return (string_as_list, string_as_list[index_mod], length, wraps)
+        return (string_as_list, length,)
 
 
-# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
+# %% editable=true slideshow={"slide_type": ""}
 class NumberFromList:
     @classmethod
     def INPUT_TYPES(s):
@@ -451,7 +448,7 @@ class NumberFromList:
 
     FUNCTION = "pick"
 
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/utility"
     
     def pick(self, list_input, index):
         length = len(list_input)
@@ -465,7 +462,7 @@ class NumberFromList:
         return (item_list, length, wraps_list,)
 
 
-# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
+# %% editable=true slideshow={"slide_type": ""}
 class StringFromList:
     @classmethod
     def INPUT_TYPES(s):
@@ -484,7 +481,7 @@ class StringFromList:
 
     FUNCTION = "pick"
 
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/utility"
     
     def pick(self, list_input, index):
         length = len(list_input)
@@ -496,6 +493,33 @@ class StringFromList:
             item_list.append(list_input[index_mod])
             
         return (item_list, length, wraps_list,)
+
+
+# %%
+class ItemFromDropdown:
+    @classmethod
+    def INPUT_TYPES(s):
+        return{
+            "required": {
+                "options": ("multiselect", {}),
+                "index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("COMBO", "INT", "INT",)
+    RETURN_NAMES = ("COMBO", "length", "wraps",)
+
+    FUNCTION = "selectOption"
+
+    CATEGORY = "ezXY/utility"
+
+    def selectOption(self, options, index):
+        # Janky, but I don't want to rewrite any code
+        # Call functions from other nodes and just deal with their awkward inputs/outputs
+        options_string, _ = StringsToList.pack(None, options)
+        item_list, length, wraps_list = StringFromList.pick(None, options_string, [index])
+        
+        return (item_list[0], length, wraps_list[0])
 
 
 # %% jupyter={"source_hidden": true}
@@ -514,7 +538,7 @@ class StringToLabel:
 
     FUNCTION = "createLabel"
     
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/image"
 
     def createLabel(self, input, font_size):
         font = ImageFont.truetype(FONT_PATH, font_size)
@@ -555,7 +579,7 @@ class ConcatenateString:
 
     FUNCTION = "concatenate_string"
     
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/utility"
 
     def concatenate_string(self, string_1, separator, string_2):
         # To avoid accidentally adding numbers .join is used
@@ -780,7 +804,7 @@ class LineToConsole:
             "required": {},
             "optional": {
                 "to_console": ("*", {},),
-                "table_depth": ("INT", {"default": 3, "min": 0, "max": 10, "step": 1,}),
+                "table_depth": ("INT", {"default": 3, "min": 1, "max": 10, "step": 1,}),
             },
         }
 
@@ -791,7 +815,7 @@ class LineToConsole:
     INPUT_IS_LIST = True
     
     OUTPUT_NODE = True
-    CATEGORY = "ezXY"
+    CATEGORY = "ezXY/debug"
 
     def printToConsole(self, to_console, table_depth):
         table_depth = table_depth[0]
@@ -806,7 +830,7 @@ NODE_CLASS_MAPPINGS = {
     "PlotImages": PlotImages,
     "JoinImages": JoinImages,
     "IterationDriver": IterationDriver,
-    "StringToList": StringToList,
+    "StringsToList": StringsToList,
     "NumbersToList": NumbersToList,
     "StringFromList": StringFromList,
     "NumberFromList": NumberFromList,
@@ -816,20 +840,22 @@ NODE_CLASS_MAPPINGS = {
     "ezXY_Driver": ezXY_Driver,
     "ezXY_AssemblePlot": ezXY_AssemblePlot,
     "LineToConsole": LineToConsole,
+    "ItemFromDropdown": ItemFromDropdown,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PlotImages": "Plot Images",
     "JoinImages": "Join Images",
     "IterationDriver": "Iteration Driver",
-    "StringToList": "String to List",
     "NumbersToList": "Numbers to List",
-    "StringFromList": "String from List",
+    "StringsToList": "Strings to List",
     "NumberFromList": "Number from List",
+    "StringFromList": "String from List",
     "StringToLabel": "String to Label",
     "ConcatenateString": "Concatenate String",
     "ezMath": "ezMath",
     "ezXY_Driver": "ezXY Driver",
     "ezXY_AssemblePlot": "ezXY Assemble Plot",
     "LineToConsole": "Line to Console",
+    "ItemFromDropdown": "Item from Dropdown",
 }

@@ -18,8 +18,8 @@ import sys
 import execution
 import nodes
 
-# Castable types recognized by ezXY stuff.
-NUMBER_TYPES = ["FLOAT", "INT", "NUMBER"]
+# Castable types recognized by ezXY stuff + dropdown handling
+NUMBER_TYPES = ["FLOAT", "INT", "NUMBER", "COMBO"]
 
 # %% jupyter={"outputs_hidden": true}
 # monkey patch validate_inputs
@@ -86,6 +86,7 @@ def validate_inputs(prompt, item, validated):
             # \/\/\/ Custom Verification Here \/\/\/
             # If either side of a link is expecting a type that isn't handled,
             # do run the function as normal, otherwise skip the type matching verification.
+            if isinstance(type_input, list): type_input = "COMBO"
             if r[val[1]] not in NUMBER_TYPES or type_input not in [*NUMBER_TYPES, "STRING"]:
             # /\/\/\/\/\/\
                 
