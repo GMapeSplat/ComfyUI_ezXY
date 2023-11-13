@@ -22,10 +22,22 @@ git clone https://github.com/GMapeSplat/ComfyUI_ezXY.git
 ## Nodes
 
 *ezXY Driver*
-- Simple list generator for quickly and easily setting up XY plot workflows. If used with other list generators or math nodes, you can drive the primitive inputs of any node.
+- Simple list generator for quickly and easily setting up XY plot workflows. If used with other list generators or math nodes you can drive the primitive inputs of any node.
+
+*ezXY Assemble Plot*
+- Simple image plotter, now with labels. Works best with **ezXY Driver** and **String to Label** nodes.
   
 *Plot Images*
-- Formats images into a single image grid. Use with ezXY Driver to set up XY plots. Capable of plotting images of different sizes together.
+- Formats image lists into a single image grid. Use with **ezXY Driver** to set up XY plots. Capable of plotting images of different sizes together.
+
+*String to Label*
+- Converts simple text into a white-on-black label.
+
+*Join images*
+- Joins two images together. If the images are not the same size, the smaller is padded to fit. Works well for applying labels to images.
+
+*Item from Dropdown*
+- When plugged into a converted dropdown input (COMBO) it populates with the list of options. Click to pick and order which options are prepared for execultion. Use with an iteration driver to compare models/loras/samplers.
   
 *ezMath*
 - Compact math node.
@@ -33,24 +45,27 @@ git clone https://github.com/GMapeSplat/ComfyUI_ezXY.git
 *Iteration Driver*
 - Simple integer list generator. Outputs a list of integers within the specified range.
   
-*String to List*
+*Strings to List*
 - Takes a string of semi-colon seperated items and outputs them as a list of strings.
   
 *Numbers to List*
 - Takes a string of semi-colon seperated numbers and outputs them as a list. Supports in-line math and
   ranges.
 
-*Item from List*
-- Takes any list as an input and outputs a single specified item.
+*String from List*
+- Takes a string list as an input and outputs a single specified item.
+
+*Number from string*
+- Takes a list of numbers as an input and outputs a single specified item.
   
 *Line to Console*
 - Simple debugging node. Prints any input to the console.
 
 ## ToDo
-- [ ] Labeler node
-- [ ] List widget auto-populator? (for model loaders)
+- [x] Labeler node
+- [x] List widget auto-populator? (for model loaders)
 - [x] Workflow examples
 - [ ] Add mask output to Image plotter
 - [ ] Add comparison operators to math node
-- [ ] Add logic to type-casting patches to allow int/float to string conversions?
+- [x] Add logic to type-casting patches to allow int/float to string conversions?
   
