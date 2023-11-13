@@ -23,7 +23,7 @@ class MultiSelectWidget
 		{
 			// Make sure to keep nodes original configure function
 			const r = (old_onConfigure)? old_onConfigure.apply(this, arguments) : undefined;
-			
+
 			if (this.MultiSelectWidget_info)
 			{
 				const widget = this.widgets.find( w => w.type === "multiselect");
@@ -47,9 +47,9 @@ class MultiSelectWidget
 			const widget = this.widgets.find( w => w.type === "multiselect");
 			return (r[0] && widget)? [ Math.max(r[0], widget.size[0] + 22), r[1] ] : undefined;
 		}
-		
+
 	}
-	
+
 	type = "multiselect";
 	size = [0, 0];
 	optionListChanged = true;
@@ -109,7 +109,7 @@ class MultiSelectWidget
 	{
 		const selected = this.selectedIndicies.splice(index, 1, null);
 		this.selectedIndicies.forEach( (elem,i,_this) => _this[i] = (elem > selected)? elem-1 : elem );
-		
+
 		this.#multiSelecter.selectedCount -= 1;
 	}
 	// These are for serializing the widget.
@@ -139,7 +139,7 @@ class MultiSelectWidget
 		this.line_height ??= ctx.measureText("M").width * 1.3;
 		this.div_pos = this.selectedCount * this.line_height + this.y;
 		this.div_height = 3
-		
+
 		// This sets the widget's size and in turn sets the node's minimum size.
 		if (this.optionListChanged)
 		{
@@ -147,12 +147,12 @@ class MultiSelectWidget
 			this.optionList.forEach( option => longest = Math.max(ctx.measureText("00: "+option).width, longest) );
 			this.size[0] = longest;
 			this.size[1] = this.optionList.length * this.line_height + this.div_height;
-			
+
 			this.optionListChanged = false;
 			node.size = node.computeSize();
 			node.graph.setDirtyCanvas(true); // This forces a redraw so the node updates its size immediately.
 		}
-			
+
 		// Background fill
 		ctx.fillStyle = (node.color)? node.color : "#222";
 		ctx.fillRect( MARGIN, this.y, width-20, this.size[1] );
@@ -181,7 +181,7 @@ class MultiSelectWidget
 		{
 			if (pos[1] > this.y && pos[1] < this.div_pos ) // In Selected Box
 			{
-				
+
 				if (this.selectedCount > 1)
 				{
 					const target_index = Math.floor( (pos[1]-this.y) / this.line_height );
@@ -213,48 +213,49 @@ const ext = {
 
 	async beforeRegisterNodeDef(_, nodeData, app) {
 		const outputs = nodeData.output;
-		
+
 		// I wrote this code, but I can't seem to remember how to read it.
 		// I think it says "If a nodes output type is one of the types defined in 'NUMBER_TYPES', then do change the output type to NUMBER_TYPES.join(',')"
 		// The && is just shorthand... probably.
 		outputs.forEach( (output_type, index) => NUMBER_TYPES.includes(output_type) && (outputs[index] = VALID_OUTPUT_TYPES ));
 	},
-		
+
 	nodeCreated(node, app) {
 		// Fires every time a node is constructed
 		// You can modify widgets/add handlers/etc here
 		// When this is executed, we are still inside the constructor,
 		// 	so node isn't an object until everything is finished executing.
 		// We can still assign properties, though.
-		
+
 		// ItemFromDropdown handling
 		if (node.getTitle() === "Item from Dropdown" )
 		{
 			// Unintrusively change the nodes output type to something useful
 			// Hacks around the frontend's janky COMBO authentication, too.
 			node.setOutputDataType(0, "COMBO,STRING");
-			
+
 			// Replace node's first input with a widget.
 			// I think the only thing that connects an input with the backend is it's name.
 			const input_name = node?.inputs[0]?.name;
 			if (input_name)	node.removeInput(0);
-			
+
 			let opts; // Maybe will use this later
 			const my_widget = new MultiSelectWidget(node, input_name, opts, app); // Custom widget
 			node.addCustomWidget(my_widget);
-			
+
 			// Set up linking behaviors.
 			//When attaching to a COMBO input, setup the widget.
 			node.onConnectOutput = function(outputIndex, inputType, inputSlot, inputNode, inputIndex)
 			{
 				if (inputType !== "COMBO") return true;
-				
-				const input_options = inputNode?.widgets[inputIndex].options.values;
-				my_widget.optionList = input_options;
+				if (node.outputs[outputIndex].links?.length > 0) return false;
+
+				const input_widget = inputNode.widgets.find( widget => widget.name === inputSlot.name );
+				my_widget.optionList = input_widget.options.values;
 				my_widget.selectOption(0);
 				my_widget.pushOptions();
 			}
-			
+
 			//////////////////////////////////////////
 			// Proceed no further, inquisitive one, //
 			//         lest thine eyes				//
@@ -266,23 +267,23 @@ const ext = {
 			{
 				if(this.flags.collapsed) return;
 				ctx.save();
-			  
+
 				ctx.font = "12px serif";
 				ctx.textBaseline = "top";
 				ctx.strokeStyle = "black";
-				
+
 				line_height = !line_height? ctx.measureText("M").width * 1.2 : line_height;
 				//const lineHeight = ctx.measureText("M").width * 1.2;
 				//const lineHeight = LiteGraph.NODE_SLOT_HEIGHT;
 				//const selected_height = (node.selected.length || 1) * lineHeight;
 				//const unselected_height = (node.options.length || 1) * lineHeight;
-				
+
 				selected_height = (node?.selected.length || 1) * line_height;
 				unselected_height = (node?.unselected.length || 0) * line_height;
 				//const offset_y = 6;	// top margin
 				//const offset_x = 5;	// left margin
 				//ctx.fillText("Selected", 2, 5);
-			
+
 				ctx.fillStyle = (node.color)? node.color : "#222";
 				ctx.fillRect(...selected_rect());
 				ctx.fillRect(...unselected_rect());
@@ -290,7 +291,7 @@ const ext = {
 				ctx.fillStyle = "green";
 				if (Array.isArray(node.selected))
 				{
-					node.selected.forEach( (v,index) => 
+					node.selected.forEach( (v,index) =>
 					{
 						const _line = index + ":" + node?.options[v];
 						ctx.strokeText(_line, LEFT_MARGIN, TOP_MARGIN + line_height * index);
@@ -310,16 +311,16 @@ const ext = {
 
 				ctx.restore();
 			}
-			
+
 			node.onMouseUp = function( event, pos, graphcanvas )
 			{
 				// Double clicks only? Event might be getting caught somewhere else.
 				const [x, y] = pos
 				const [sel_left, sel_top, sel_right, sel_bot] = selected_rect();
 				const [,un_top,,un_bot] = unselected_rect();
-				
+
 				if (x < sel_left || x > sel_right) return false; // Out of scope
-				
+
 				if (y > sel_top && y < sel_top + sel_bot ) // In Selected Box
 				{
 					if (node?.selected.length > 1)
@@ -330,13 +331,13 @@ const ext = {
 						node?.unselected.sort((a,b) => a-b);
 					}
 				}
-				
+
 				else if (y > un_top && y < un_top + un_bot ) // In Unselected Box
 				{
 					const target_index = Math.floor( (y - un_top) / line_height);
 					node?.selected.push(node?.unselected.splice(target_index, 1)[0]);
 				}
-				
+
 				my_widget.update();
 				//return true; //return true is the event was used by your node, to block other behaviours
 			}

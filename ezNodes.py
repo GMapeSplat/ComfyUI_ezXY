@@ -397,7 +397,7 @@ class NumbersToList:
         return (output_list, length,)
 
 
-# %% jupyter={"source_hidden": true}
+# %%
 class StringsToList:
     @classmethod
     def INPUT_TYPES(s):
@@ -429,13 +429,13 @@ class StringsToList:
         return (string_as_list, length,)
 
 
-# %% editable=true slideshow={"slide_type": ""}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
 class NumberFromList:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "list_input": ("FLOAT", {}),
+                "list_input": ("FLOAT", {"forceInput":True},),
                 "index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
             },
         }
@@ -462,13 +462,13 @@ class NumberFromList:
         return (item_list, length, wraps_list,)
 
 
-# %% editable=true slideshow={"slide_type": ""}
+# %% editable=true slideshow={"slide_type": ""} jupyter={"source_hidden": true}
 class StringFromList:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "list_input": ("STRING", {}),
+                "list_input": ("STRING", {"forceInput":True},),
                 "index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
             },
         }
@@ -495,7 +495,7 @@ class StringFromList:
         return (item_list, length, wraps_list,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class ItemFromDropdown:
     @classmethod
     def INPUT_TYPES(s):
@@ -530,6 +530,7 @@ class StringToLabel:
             "required": {
                 "input": ("STRING", {}),
                 "font_size": ("INT", {"default": 45, "min": 1, "max": 200, "step": 1}),
+                "clockwise_rotation": ([0, 90, 180, 270], {}),
             },
         }
 
@@ -540,7 +541,7 @@ class StringToLabel:
     
     CATEGORY = "ezXY/image"
 
-    def createLabel(self, input, font_size):
+    def createLabel(self, input, font_size, clockwise_rotation):
         font = ImageFont.truetype(FONT_PATH, font_size)
         
         # Fake image for size testing
@@ -558,6 +559,9 @@ class StringToLabel:
         # Converting to something that Comfy can understand.
         label_array = np.array(label_image, ndmin=4)
         label_array = torch.from_numpy(label_array)
+
+        if clockwise_rotation:
+            label_array = torch.rot90(label_array, -1*clockwise_rotation//90, [1,2])
 
         return (label_array,)
 
