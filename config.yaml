@@ -3,7 +3,7 @@
 # Use automatic type casting?
 auto_typecast: true
 
-# Allow frontend hack (javascript extension) allowing int/float links?
+# Allow frontend hack (javascript extension) allowing int/float/string links?
 force_numbertype_compatability: true
 
 # Max image size allowed for plot images node in pixels.

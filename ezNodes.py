@@ -184,6 +184,13 @@ class PlotImages:
     CATEGORY = "ezXY/image"
     
     def plotXY(self, images, x_pos, y_pos, force_all = False):
+        # make sure we have enough x and y positions
+        # if not, repeat the last entry
+        if len(x_pos) < len(images):
+            x_pos.extend( [x_pos[-1]] * (len(images)-len(x_pos)) );
+        if len(y_pos) < len(images):
+            y_pos.extend( [y_pos[-1]] * (len(images)-len(y_pos)) );
+        
         # find the edges of grid
         column_min, column_max = min(x_pos), max(x_pos)
         row_min, row_max = min(y_pos), max(y_pos)
@@ -259,7 +266,7 @@ class PlotImages:
         return (plot,)
 
 
-# %% jupyter={"source_hidden": true}
+# %%
 class JoinImages():
     @classmethod
     def INPUT_TYPES(s):
