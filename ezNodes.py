@@ -502,14 +502,20 @@ class StringFromList:
         return (item_list, length, wraps_list,)
 
 
-# %% jupyter={"source_hidden": true}
+# %%
 class ItemFromDropdown:
     @classmethod
     def INPUT_TYPES(s):
         return{
             "required": {
                 "options": ("multiselect", {}),
-                "index": ("INT", {"default": 0, "min": -999, "max": 999, "step": 1}),
+                "index": ("INT",
+                          {"default": 0,
+                           "min": -999,
+                           "max": 999,
+                           "step": 1,
+                           "defaultInput": True,
+                          }),
             },
         }
 
