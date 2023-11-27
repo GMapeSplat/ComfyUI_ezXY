@@ -328,7 +328,7 @@ class IterationDriver:
         return (list(range(0,iterations)), iterations,)
 
 
-# %% jupyter={"source_hidden": true}
+# %%
 class NumbersToList:
     @classmethod
     def INPUT_TYPES(s):
@@ -378,14 +378,21 @@ class NumbersToList:
                 ranges = chunk.split(":")
                 range_min = float(eval(ranges[0], {}))
                 range_max = float(eval(ranges[1], {}))
-                
-                range_step = None                
+
+                range_step = None
                 if len(ranges) > 2:
                     range_step = float(eval(ranges[2], {}))
                 else:
                     range_step = 1
 
-                chunks[i] = np.arange(range_min, range_max+1, range_step).tolist()
+                #chunks[i] = np.arange(range_min, range_max+1, range_step).tolist()
+                range_list = []
+                value = range_min
+                while round(value, ndigits=2) < range_max:
+                    range_list.append(value)
+                    value += range_step
+                range_list.append(range_max)
+                chunks[i] = range_list
 
             else:
                 chunks[i] = float(eval(chunk, {}))
