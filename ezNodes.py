@@ -266,7 +266,7 @@ class PlotImages:
         return (plot,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class JoinImages():
     @classmethod
     def INPUT_TYPES(s):
@@ -328,7 +328,7 @@ class IterationDriver:
         return (list(range(0,iterations)), iterations,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class NumbersToList:
     @classmethod
     def INPUT_TYPES(s):
@@ -411,7 +411,7 @@ class NumbersToList:
         return (output_list, length,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class StringsToList:
     @classmethod
     def INPUT_TYPES(s):
@@ -509,7 +509,7 @@ class StringFromList:
         return (item_list, length, wraps_list,)
 
 
-# %%
+# %% jupyter={"source_hidden": true}
 class ItemFromDropdown:
     @classmethod
     def INPUT_TYPES(s):
@@ -542,7 +542,7 @@ class ItemFromDropdown:
         return (item_list[0], length, wraps_list[0])
 
 
-# %% jupyter={"source_hidden": true}
+# %%
 class StringToLabel:
     @classmethod
     def INPUT_TYPES(s):
@@ -570,11 +570,11 @@ class StringToLabel:
         _, _, length, height = _draw.textbbox((0,0), input, font)
 
         # Create the real image and its drawing obj
-        label_image = Image.new("RGB", [length, int(height*1.1)])
+        label_image = Image.new("RGB", [int(length*1.1), int(height*1.2)])
         draw_obj = ImageDraw.Draw(label_image)
 
         # Draw the text. All the strange parameters are for centering the text.
-        draw_obj.text((0,height//1.75), input, font=font, anchor='lm')
+        draw_obj.text((length//20,height//1.6), input, font=font, anchor='lm')
 
         # Converting to something that Comfy can understand.
         label_array = np.array(label_image, ndmin=4)
