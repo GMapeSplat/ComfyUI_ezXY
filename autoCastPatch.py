@@ -21,7 +21,7 @@ import nodes
 # Castable types recognized by ezXY stuff + dropdown handling
 NUMBER_TYPES = ["FLOAT", "INT", "NUMBER", "COMBO"]
 
-# %% jupyter={"outputs_hidden": true}
+# %% jupyter={"outputs_hidden": true, "source_hidden": true}
 # monkey patch validate_inputs
 # This could cause some compatability issues with other custom mods and scripts.
 # Only adds a couple lines of code and a tab to the built-in function.
@@ -274,19 +274,21 @@ def map_node_over_list(obj, input_data_all, func, allow_interrupt=False):
         # for each input, typecast/clamp the incoming values.
         match config[0]:
             case "FLOAT" | "NUMBER":
-                _nums = [float(value) for value in input_data_all[input_name]] 
-                if 'min' in config[1]:
-                    _nums = [max(nums_, config[1]['min']) for nums_ in _nums]
-                if 'max' in config[1]:
-                    _nums = [min(nums_, config[1]['max']) for nums_ in _nums]
+                _nums = [float(value) for value in input_data_all[input_name]]
+                if len(config) > 1:
+                    if 'min' in config[1]:
+                        _nums = [max(nums_, config[1]['min']) for nums_ in _nums]
+                    if 'max' in config[1]:
+                        _nums = [min(nums_, config[1]['max']) for nums_ in _nums]
                 input_data_all[input_name] = _nums
                 
             case "INT":
-                _nums = [int(value) for value in input_data_all[input_name]]  
-                if 'min' in config[1]:
-                    _nums = [max(min_value, config[1]['min']) for min_value in _nums]
-                if 'max' in config[1]:
-                    _nums = [min(max_value, config[1]['max']) for max_value in _nums]
+                _nums = [int(value) for value in input_data_all[input_name]]
+                if len(config) > 1:
+                    if 'min' in config[1]:
+                        _nums = [max(min_value, config[1]['min']) for min_value in _nums]
+                    if 'max' in config[1]:
+                        _nums = [min(max_value, config[1]['max']) for max_value in _nums]
                 input_data_all[input_name] = _nums
 
             case "STRING":
