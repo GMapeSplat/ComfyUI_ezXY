@@ -24,7 +24,7 @@ import numpy as np
 
 EZXY_PATH = os.path.dirname(os.path.realpath(__file__))
 CONFIG_PATH = os.path.join(EZXY_PATH, "config.yaml")
-FONT_PATH = os.path.join(EZXY_PATH, "font/FiraCode-Regular.otf")
+FONT_PATH = os.path.join(EZXY_PATH, "font/ZCOOLXiaoWei-Regular.ttf")
 # Bring in config
 import yaml
 #config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.yaml")
