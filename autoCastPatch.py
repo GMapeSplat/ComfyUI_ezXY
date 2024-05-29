@@ -271,6 +271,10 @@ def map_node_over_list(obj, input_data_all, func, allow_interrupt=False):
 
     # node_inputs = {input_name: (input_type, {default: foo,})}
     for input_name, config in node_inputs.items():
+        # if input_name is not included (empty) just skip it
+        if input_name not in input_data_all:             
+            continue
+
         # for each input, typecast/clamp the incoming values.
         match config[0]:
             case "FLOAT" | "NUMBER":
