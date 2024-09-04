@@ -1,5 +1,7 @@
 # ezXY
 
+# Does not work with current version of Comfyui
+
 ### A collection of scripts and custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
 
 ## Features
